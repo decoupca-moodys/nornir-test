@@ -1,20 +1,21 @@
-from nornir.core.plugins.inventory import TransformFunctionRegister
-from nornir import InitNornir
 from pprint import pprint
+
 import ipdb
+from nornir import InitNornir
+from nornir.core.inventory import Host
+from nornir.core.plugins.inventory import TransformFunctionRegister
 
 
-
-def netbox_transform(host):
+def netbox_transform(host: Host) -> None:
     # store raw netbox data in separate key in case we want it later
-    host.data['netbox'] = host.data
-    netbox = host.data['netbox']
+    host.data["netbox"] = host.data
+    netbox = host.data["netbox"]
 
-    host.data['site'] = netbox['site']['slug']
+    host.data["site"] = netbox["site"]["slug"]
 
 
-TransformFunctionRegister.register('netbox_transform', netbox_transform)
+TransformFunctionRegister.register("netbox_transform", netbox_transform)
 
-nr = InitNornir(config_file='config.yaml')
+nr = InitNornir(config_file="config.yaml")
 
 ipdb.set_trace()
