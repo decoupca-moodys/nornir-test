@@ -1,6 +1,7 @@
 import os
 from pprint import pprint
 
+from tqdm import tqdm
 import ipdb
 from netbane.plugins.inventory.netbox import netbox_transform
 from nornir import InitNornir
@@ -50,8 +51,35 @@ def get_wlc_ap_list(task: Task):
     task.host.close_connection("netmiko")
 
 
-wlc = nr.filter(name="WWTC19WC11")
-result = wlc.run(task=get_wlc_ap_list)
-print_result(result)
+def get_wlc_sysinfo(task: Task, progress):
+    task.host.open_connection("netmiko", platform="cisco_wlc_ssh", configuration=task.nornir.config)
+    task.run(task=netmiko_send_command, command_string="show sysinfo", use_textfsm=True)
+    task.host.close_connection("netmiko")
+    progress.update()
+    tqdm.write(f"{task.host}: facts gathered")
+
+
+def get_wlc_code_compliance(result: Result, min_version: str='8.5.161.0'):
+    compliance = {}
+    for name, res in result.items():
+        if not res.failed:
+            version = res[1].result[0]['product_version']
+            hostname = res.host.name
+            if version < min_version:
+                is_compliant = False
+            else:
+                is_compliant = True
+            compliance[hostname] = {
+                'is_compliant': is_compliant,
+                'current_version': version,
+                'minimum_version': min_version,
+            }
+    return compliance
+
+
+wlc = nr.filter(platform='aireos')
+with tqdm(total=len(wlc.inventory.hosts), desc="Gathering facts") as progress:
+    result = wlc.run(task=get_wlc_sysinfo, progress=progress)
+pprint(get_wlc_code_compliance(result))
 
 ipdb.set_trace()
